@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<groupId>org.eventb.rossi.bridge</groupId>
+	<artifactId>root</artifactId>
+	<version>1.0.0-SNAPSHOT</version>
+	<packaging>pom</packaging>
+
+	<name>Rossi Bridge</name>
+
+	<properties>
+		<tycho-version>4.0.9</tycho-version>
+		<maven-resources-plugin-version>3.2.0</maven-resources-plugin-version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+		<!-- Eclipse release the Rodin platform is built against (Rodin 3.10). -->
+		<eclipse-p2-url>https://download.eclipse.org/eclipse/updates/4.38/</eclipse-p2-url>
+
+		<!-- Appended to the build qualifier; set by CI to the short commit. -->
+		<version-suffix/>
+	</properties>
+
+	<modules>
+		<module>org.eventb.rossi.bridge</module>
+		<module>org.eventb.rossi.bridge.feature</module>
+		<module>org.eventb.rossi.bridge.site</module>
+	</modules>
+
+	<build>
+		<pluginManagement>
+			<plugins>
+				<plugin>
+					<groupId>org.eclipse.tycho</groupId>
+					<artifactId>tycho-packaging-plugin</artifactId>
+					<version>${tycho-version}</version>
+					<configuration>
+						<format>yyyyMMddHHmm'${version-suffix}'</format>
+					</configuration>
+				</plugin>
+				<!-- Deactivate the Maven resource plug-in -->
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-resources-plugin</artifactId>
+					<version>${maven-resources-plugin-version}</version>
+					<executions>
+						<execution>
+							<id>default-resources</id>
+							<phase/>
+						</execution>
+						<execution>
+							<id>default-testResources</id>
+							<phase/>
+						</execution>
+					</executions>
+				</plugin>
+			</plugins>
+		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-maven-plugin</artifactId>
+				<version>${tycho-version}</version>
+				<extensions>true</extensions>
+			</plugin>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-versions-plugin</artifactId>
+				<version>${tycho-version}</version>
+			</plugin>
+			<!-- Source bundles, so the plug-in can ship in an SDK-style bundle -->
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>tycho-source-plugin</artifactId>
+				<version>${tycho-version}</version>
+				<executions>
+					<execution>
+						<id>plugin-source</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>plugin-source</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.eclipse.tycho</groupId>
+				<artifactId>target-platform-configuration</artifactId>
+				<version>${tycho-version}</version>
+				<configuration>
+					<environments>
+						<environment>
+							<os>linux</os>
+							<ws>gtk</ws>
+							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>win32</os>
+							<ws>win32</ws>
+							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>macosx</os>
+							<ws>cocoa</ws>
+							<arch>x86_64</arch>
+						</environment>
+						<environment>
+							<os>macosx</os>
+							<ws>cocoa</ws>
+							<arch>aarch64</arch>
+						</environment>
+					</environments>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+
+	<repositories>
+		<!--
+		    The Rodin platform is deliberately not listed here: in the
+		    Rodin-Bundle reactor its bundles are reactor artifacts.  For a
+		    standalone build, pass -DrodinTargetSiteUrl=<p2 url>.
+		-->
+		<repository>
+			<id>eclipse</id>
+			<layout>p2</layout>
+			<url>${eclipse-p2-url}</url>
+		</repository>
+	</repositories>
+
+	<profiles>
+		<profile>
+			<id>standalone-rodin</id>
+			<activation>
+				<property>
+					<name>rodinTargetSiteUrl</name>
+				</property>
+			</activation>
+			<repositories>
+				<repository>
+					<id>Rodin-platform</id>
+					<layout>p2</layout>
+					<url>${rodinTargetSiteUrl}</url>
+				</repository>
+			</repositories>
+		</profile>
+	</profiles>
+
+</project>

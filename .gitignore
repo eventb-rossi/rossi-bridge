@@ -1,0 +1,20 @@
+# Compiled class file
+*.class
+
+# Package files
+*.jar
+*.zip
+*.tar.gz
+
+# Eclipse / PDE
+bin
+.settings
+features
+plugins
+
+# Maven
+target/
+
+# IDE
+.vscode
+.DS_Store

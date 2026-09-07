@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <!--
+       The bridge must be listening before the user does anything, so the
+       bundle is started eagerly by the workbench rather than lazily by a
+       command handler.
+   -->
+   <extension
+         point="org.eclipse.ui.startup">
+      <startup
+            class="org.eventb.rossi.bridge.BridgeStartup">
+      </startup>
+   </extension>
+</plugin>

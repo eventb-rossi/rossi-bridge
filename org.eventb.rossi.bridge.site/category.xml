@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature id="org.eventb.rossi.bridge.feature">
+      <category name="org.eventb.rossi.tools"/>
+   </feature>
+   <category-def name="org.eventb.rossi.tools" label="Event-B Tools">
+      <description>
+         Tools for working with Event-B models in Rodin.
+      </description>
+   </category-def>
+</site>

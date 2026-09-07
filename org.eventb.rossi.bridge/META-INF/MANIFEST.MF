@@ -1,0 +1,16 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Rossi Bridge
+Bundle-SymbolicName: org.eventb.rossi.bridge;singleton:=true
+Bundle-Version: 1.0.0.qualifier
+Bundle-Activator: org.eventb.rossi.bridge.Activator
+Bundle-Vendor: eventb-rossi
+Require-Bundle: org.eclipse.ui,
+ org.eclipse.ui.ide,
+ org.eclipse.jface,
+ org.eclipse.swt,
+ org.eclipse.core.runtime,
+ org.eclipse.core.resources
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Automatic-Module-Name: org.eventb.rossi.bridge
+Bundle-ActivationPolicy: lazy
