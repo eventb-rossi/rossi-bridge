@@ -50,6 +50,7 @@ public final class BridgeServer {
 	private final File portFile;
 	private final List<BridgeSession> sessions = new CopyOnWriteArrayList<>();
 	private final Thread acceptor;
+	private final ModelListener models = new ModelListener(this);
 	private volatile boolean stopping;
 
 	/**
@@ -74,6 +75,7 @@ public final class BridgeServer {
 			throw e;
 		}
 		server.acceptor.start();
+		server.models.start();
 		return server;
 	}
 
@@ -92,6 +94,27 @@ public final class BridgeServer {
 	}
 
 	/**
+	 * Whether any client asked to be sent model changes. Serialising a
+	 * component is the expensive part of a push, and live sync is off by
+	 * default, so the listener asks before doing any of it.
+	 */
+	boolean hasSubscribers() {
+		for (final BridgeSession session : sessions) {
+			if (session.isSubscribed()) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/** Push a notification to every client that subscribed. */
+	void broadcast(String method, Map<String, Object> params) {
+		for (final BridgeSession session : sessions) {
+			session.notify(method, params);
+		}
+	}
+
+	/**
 	 * Drop the clients and unpublish the port.
 	 *
 	 * <p>
@@ -104,6 +127,7 @@ public final class BridgeServer {
 	 */
 	public void stop() {
 		stopping = true;
+		models.stop();
 		for (final BridgeSession session : sessions) {
 			session.close();
 		}

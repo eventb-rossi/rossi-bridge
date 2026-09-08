@@ -42,13 +42,25 @@ public final class Methods {
 	/** The handshake, which every connection must complete first. */
 	public static final String HELLO = "bridge/hello";
 
+	/** Ask to be sent {@link #DIRTY} on this connection. */
+	public static final String SUBSCRIBE = "model/subscribe";
+
+	/** An unsaved change to a component's model. */
+	public static final String DIRTY = "model/dirty";
+
+	/** Re-read files from disk and reload any editor open on them. */
+	public static final String RELOAD = "model/reload";
+
 	/** The methods this build answers, in the order they were introduced. */
 	private static final List<Object> CAPS = Arrays.<Object> asList(
-			"project/register", "project/reveal", "workspace/refresh");
+			"project/register", "project/reveal", "workspace/refresh",
+			SUBSCRIBE, DIRTY, RELOAD);
 
 	private final String token;
 
 	private boolean greeted;
+
+	private volatile boolean subscribed;
 
 	/**
 	 * @param token
@@ -85,10 +97,21 @@ public final class Methods {
 			return ProjectOps.refresh(required(params, "project"),
 					Json.asList(params.get("files")),
 					Json.asBoolean(params.get("build"), false));
+		case SUBSCRIBE:
+			subscribed = true;
+			return Json.map();
+		case RELOAD:
+			return ProjectOps.reload(required(params, "project"),
+					Json.asList(params.get("files")));
 		default:
 			throw new BridgeException(BridgeException.METHOD_NOT_FOUND,
 					"unknown method: " + method);
 		}
+	}
+
+	/** Whether this client asked to be sent {@link #DIRTY}. */
+	boolean isSubscribed() {
+		return subscribed;
 	}
 
 	/**

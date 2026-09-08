@@ -11,6 +11,7 @@ package org.eventb.rossi.bridge;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -36,9 +37,15 @@ import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
+import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.ISetSelectionTarget;
+import org.rodinp.core.emf.api.itf.ILFile;
+
+import fr.systerel.editor.internal.editors.RodinEditor;
 
 /** The workspace and workbench operations the bridge exposes. */
 final class ProjectOps {
@@ -48,6 +55,16 @@ final class ProjectOps {
 
 	/** Rodin's unchecked machine and context files, in lookup order. */
 	private static final String[] COMPONENT_EXTENSIONS = { "bum", "buc" };
+
+	/** Whether a file name is one of Rodin's unchecked component files. */
+	static boolean isComponentFile(String name) {
+		for (final String extension : COMPONENT_EXTENSIONS) {
+			if (name.endsWith("." + extension)) {
+				return true;
+			}
+		}
+		return false;
+	}
 
 	private ProjectOps() {
 		// utility class
@@ -152,16 +169,14 @@ final class ProjectOps {
 	static Map<String, Object> refresh(String projectName, List<Object> files,
 			boolean build) throws BridgeException {
 		final IProject project = project(projectName);
+		final List<String> names = names(files);
 		run(project, monitor -> {
-			if (files == null || files.isEmpty()) {
+			if (names.isEmpty()) {
 				project.refreshLocal(IResource.DEPTH_INFINITE, monitor);
 			} else {
-				for (final Object name : files) {
-					final String file = Json.asString(name);
-					if (file != null) {
-						project.getFile(file).refreshLocal(IResource.DEPTH_ONE,
-								monitor);
-					}
+				for (final String name : names) {
+					project.getFile(name).refreshLocal(IResource.DEPTH_ONE,
+							monitor);
 				}
 			}
 		}, "cannot refresh " + projectName);
@@ -170,6 +185,85 @@ final class ProjectOps {
 		}
 		return Json.map("project", projectName, "buildScheduled",
 				Boolean.valueOf(build));
+	}
+
+	/**
+	 * Re-read `files` from disk and reload any editor open on them.
+	 *
+	 * <p>
+	 * Refreshing alone is not enough. Eclipse notices the write and the
+	 * database re-reads the file, but an editor already open on a component
+	 * keeps rendering what it loaded, which is why the user otherwise reaches
+	 * for F5. Reloading the editor's resource is what {@code RefreshHandler}
+	 * does for that key, and this does the same on request.
+	 * </p>
+	 */
+	static Map<String, Object> reload(String projectName, List<Object> files)
+			throws BridgeException {
+		refresh(projectName, files, false);
+		final IProject project = project(projectName);
+		final List<String> names = names(files);
+		final IWorkbench workbench = PlatformUI.getWorkbench();
+		workbench.getDisplay()
+				.asyncExec(() -> reloadEditors(workbench, project, names));
+		return Json.map("project", projectName, "files",
+				Long.valueOf(names.size()));
+	}
+
+	private static void reloadEditors(IWorkbench workbench, IProject project,
+			List<String> names) {
+		for (final IWorkbenchWindow window : workbench.getWorkbenchWindows()) {
+			final IWorkbenchPage page = window.getActivePage();
+			if (page == null) {
+				continue;
+			}
+			for (final IEditorReference reference : page.getEditorReferences()) {
+				// `false`: an editor that has not been restored has nothing
+				// stale on screen, so leave it closed.
+				final IEditorPart editor = reference.getEditor(false);
+				if (editor == null || !isOn(editor, project, names)) {
+					continue;
+				}
+				reloadEditor(editor);
+			}
+		}
+	}
+
+	private static boolean isOn(IEditorPart editor, IProject project,
+			List<String> names) {
+		// Adapter-aware, so this also matches an editor whose input is not a
+		// plain file input.
+		final IFile file = ResourceUtil.getFile(editor.getEditorInput());
+		return file != null && project.equals(file.getProject())
+				&& names.contains(file.getName());
+	}
+
+	/** The file names in a request's `files` member, never null. */
+	private static List<String> names(List<Object> files) {
+		final List<String> names = new ArrayList<>();
+		if (files != null) {
+			for (final Object name : files) {
+				final String file = Json.asString(name);
+				if (file != null) {
+					names.add(file);
+				}
+			}
+		}
+		return names;
+	}
+
+	private static void reloadEditor(IEditorPart editor) {
+		if (!(editor instanceof RodinEditor rodinEditor)) {
+			return;
+		}
+		// An overlay edit in flight holds a position into the document about
+		// to be replaced, and writes back when it closes; abandoning it first
+		// is what keeps it from resurrecting what the reload just dropped.
+		rodinEditor.abordEdition();
+		final ILFile resource = rodinEditor.getResource();
+		if (resource != null) {
+			resource.reload();
+		}
 	}
 
 	private static void revealInWorkbench(IWorkbench workbench,

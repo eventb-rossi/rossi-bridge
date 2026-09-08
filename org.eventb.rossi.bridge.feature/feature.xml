@@ -24,6 +24,9 @@
       <import plugin="org.eclipse.swt"/>
       <import plugin="org.eclipse.core.runtime"/>
       <import plugin="org.eclipse.core.resources"/>
+      <import plugin="org.rodinp.core"/>
+      <import plugin="org.rodinp.core.emf"/>
+      <import plugin="fr.systerel.editor"/>
    </requires>
 
    <plugin

@@ -71,6 +71,22 @@ final class BridgeSession implements Runnable {
 		}
 	}
 
+	/** Whether this client asked to be sent model changes. */
+	boolean isSubscribed() {
+		return methods.isSubscribed();
+	}
+
+	/**
+	 * Push an unsolicited message, if this client asked for them. A client
+	 * that only registers a project never sees model traffic.
+	 */
+	void notify(String method, Map<String, Object> params) {
+		if (!isSubscribed()) {
+			return;
+		}
+		send(Json.map("jsonrpc", "2.0", "method", method, "params", params));
+	}
+
 	/** Drop the connection; the reading thread unblocks and exits. */
 	void close() {
 		try {
