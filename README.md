@@ -21,7 +21,8 @@ The plug-in listens on `127.0.0.1` on an ephemeral port and publishes it as
 ```json
 {"port":41235,"pid":12345,"protocol":1,"rodin":"3.10.0",
  "bundle":"1.0.0.qualifier","workspace":"/home/u/.rossi/rodin",
- "caps":["project/register","project/reveal","workspace/refresh"],
+ "caps":["project/register","project/reveal","workspace/refresh",
+         "model/subscribe","model/dirty","model/reload"],
  "token":"9f86d081884c7d65…"}
 ```
 
@@ -39,6 +40,14 @@ sides can be upgraded independently.
 | `project/register` | `path` | load the `.project` descriptor, create/open the project, refresh it |
 | `project/reveal` | `project`, `component?` | focus Rodin, select the project in the Event-B Explorer, optionally open the component |
 | `workspace/refresh` | `project`, `files?`, `build?` | `refreshLocal` the project or the named files, optionally build |
+| `model/subscribe` | none | ask for `model/dirty` on this connection |
+| `model/dirty` | `project`, `file`, `xml` | sent by the plug-in: a component changed in Rodin and is not saved, carrying the in-memory model |
+| `model/reload` | `project`, `files?` | `refreshLocal` the named files, then reload any editor open on them |
+
+`model/reload` skips an editor whose component has unsaved changes. Keystrokes
+reach the Rodin database before a save, so they sit in the buffer a reload would
+drop, and dropping them would resolve a two-sided conflict silently in the
+caller's favour. Saving or reverting in Rodin settles it instead.
 
 When Rodin closes, the sessions are dropped and the port file removed; a client
 sees the connection end. Nothing is written at that point on purpose, because
