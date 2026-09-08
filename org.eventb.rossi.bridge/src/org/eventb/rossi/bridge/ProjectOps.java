@@ -43,6 +43,8 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.ISetSelectionTarget;
+import org.rodinp.core.IRodinFile;
+import org.rodinp.core.RodinDBException;
 import org.rodinp.core.emf.api.itf.ILFile;
 
 import fr.systerel.editor.internal.editors.RodinEditor;
@@ -252,8 +254,37 @@ final class ProjectOps {
 		return names;
 	}
 
+	/**
+	 * Reload one editor, unless the user has typed into it since the last
+	 * save.
+	 *
+	 * <p>
+	 * Reloading replaces what the editor shows with what is on disk, and
+	 * keystrokes reach the Rodin database before any save, so they sit in the
+	 * very buffer a reload drops. Leave such an editor alone; saving or
+	 * reverting in Rodin settles which version wins, and does it where the
+	 * user can watch.
+	 * </p>
+	 */
 	private static void reloadEditor(IEditorPart editor) {
 		if (!(editor instanceof RodinEditor rodinEditor)) {
+			return;
+		}
+		// The question Rodin's own dirty tracking asks, of the same file:
+		// RodinDocumentProvider does exactly this to decide whether the editor
+		// can be saved. Asking it rather than IEditorPart.isDirty() skips a
+		// cached flag that is not refreshed while the provider synchronizes.
+		final IRodinFile file = rodinEditor.getInputRoot().getRodinFile();
+		try {
+			if (file.hasUnsavedChanges()) {
+				Activator.log(IStatus.INFO,
+						"not reloading " + file.getElementName()
+								+ ": it has unsaved changes in Rodin",
+						null);
+				return;
+			}
+		} catch (RodinDBException e) {
+			// Unable to tell, so do not gamble with the user's typing.
 			return;
 		}
 		// An overlay edit in flight holds a position into the document about
