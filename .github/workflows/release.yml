@@ -1,0 +1,41 @@
+name: Release
+
+# A tag here is a deliberate version bump.  There is nothing to publish from
+# this repository: the p2 site users install from is built centrally by
+# Rodin-Bundle, from the pin it records for this submodule.  So the tag's whole
+# job is to tell the bundle that a newer commit is worth pinning.
+#
+# Needs a repository secret BUNDLE_DISPATCH_TOKEN: a fine-grained token with
+# Contents: write on eventb-rossi/Rodin-Bundle.  GITHUB_TOKEN cannot reach
+# another repository, so there is no way around a credential here.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Tell the bundle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch to Rodin-Bundle
+        env:
+          GH_TOKEN: ${{ secrets.BUNDLE_DISPATCH_TOKEN }}
+          # .gitmodules names every submodule after its repository, so the
+          # bundle can be told which one this is without a constant here
+          # that would drift from it silently.
+          SUBMODULE: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::Secret BUNDLE_DISPATCH_TOKEN is not set, so the bundle cannot be told about $GITHUB_REF_NAME."
+            exit 1
+          fi
+          jq -n --arg sub "$SUBMODULE" --arg tag "$GITHUB_REF_NAME" --arg sha "$GITHUB_SHA" \
+            '{event_type: "plugin-tagged",
+              client_payload: {submodule: $sub, tag: $tag, sha: $sha}}' \
+            | gh api --method POST repos/eventb-rossi/Rodin-Bundle/dispatches --input -
+          echo "Told Rodin-Bundle that $SUBMODULE is at $GITHUB_REF_NAME."
