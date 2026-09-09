@@ -40,6 +40,7 @@ import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorReference;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.WorkbenchException;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.ISetSelectionTarget;
@@ -155,6 +156,45 @@ final class ProjectOps {
 		workbench.getDisplay()
 				.asyncExec(() -> revealInWorkbench(workbench, target));
 		return Json.map("project", projectName, "component", component);
+	}
+
+	/**
+	 * Switch the workbench to a perspective.
+	 *
+	 * <p>
+	 * Which perspective a workspace opens in is otherwise Eclipse's
+	 * {@code defaultPerspectiveId} preference to decide, and it reads that
+	 * only when opening a window with no perspective state to restore. Every
+	 * workspace Rodin has opened before restores the perspective that was
+	 * last active there instead, so nothing outside the running instance can
+	 * change it. This can, being inside it.
+	 * </p>
+	 *
+	 * <p>
+	 * Scheduled on the UI thread and answered at once, like {@link #reveal}:
+	 * an unknown or unopenable perspective is logged there rather than
+	 * reported back, since by then the caller has been answered.
+	 * </p>
+	 */
+	static Map<String, Object> showPerspective(String id) {
+		final IWorkbench workbench = PlatformUI.getWorkbench();
+		workbench.getDisplay()
+				.asyncExec(() -> showPerspectiveInWorkbench(workbench, id));
+		return Json.map("perspective", id);
+	}
+
+	private static void showPerspectiveInWorkbench(IWorkbench workbench,
+			String id) {
+		final IWorkbenchWindow window = activeWindow(workbench);
+		if (window == null) {
+			return;
+		}
+		try {
+			workbench.showPerspective(id, window);
+		} catch (WorkbenchException e) {
+			Activator.log(IStatus.WARNING, "cannot show perspective " + id
+					+ ": " + e.getMessage(), e);
+		}
 	}
 
 	/**
@@ -297,15 +337,24 @@ final class ProjectOps {
 		}
 	}
 
+	/**
+	 * The window to act on: the active one, or the first that exists when
+	 * nothing is active. {@code null} when the workbench has no window at all.
+	 */
+	private static IWorkbenchWindow activeWindow(IWorkbench workbench) {
+		final IWorkbenchWindow active = workbench.getActiveWorkbenchWindow();
+		if (active != null) {
+			return active;
+		}
+		final IWorkbenchWindow[] windows = workbench.getWorkbenchWindows();
+		return windows.length == 0 ? null : windows[0];
+	}
+
 	private static void revealInWorkbench(IWorkbench workbench,
 			IResource target) {
-		IWorkbenchWindow window = workbench.getActiveWorkbenchWindow();
+		final IWorkbenchWindow window = activeWindow(workbench);
 		if (window == null) {
-			final IWorkbenchWindow[] windows = workbench.getWorkbenchWindows();
-			if (windows.length == 0) {
-				return;
-			}
-			window = windows[0];
+			return;
 		}
 		final Shell shell = window.getShell();
 		if (shell != null) {

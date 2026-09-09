@@ -51,10 +51,13 @@ public final class Methods {
 	/** Re-read files from disk and reload any editor open on them. */
 	public static final String RELOAD = "model/reload";
 
+	/** Switch the workbench to a perspective. */
+	public static final String PERSPECTIVE = "ui/perspective";
+
 	/** The methods this build answers, in the order they were introduced. */
 	private static final List<Object> CAPS = Arrays.<Object> asList(
 			"project/register", "project/reveal", "workspace/refresh",
-			SUBSCRIBE, DIRTY, RELOAD);
+			SUBSCRIBE, DIRTY, RELOAD, PERSPECTIVE);
 
 	private final String token;
 
@@ -103,6 +106,8 @@ public final class Methods {
 		case RELOAD:
 			return ProjectOps.reload(required(params, "project"),
 					Json.asList(params.get("files")));
+		case PERSPECTIVE:
+			return ProjectOps.showPerspective(required(params, "id"));
 		default:
 			throw new BridgeException(BridgeException.METHOD_NOT_FOUND,
 					"unknown method: " + method);
