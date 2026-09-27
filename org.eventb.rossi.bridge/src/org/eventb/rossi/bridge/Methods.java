@@ -54,10 +54,13 @@ public final class Methods {
 	/** Switch the workbench to a perspective. */
 	public static final String PERSPECTIVE = "ui/perspective";
 
+	/** Open one proof obligation in Rodin's interactive prover. */
+	public static final String PROVE = "proof/reveal";
+
 	/** The methods this build answers, in the order they were introduced. */
 	private static final List<Object> CAPS = Arrays.<Object> asList(
 			"project/register", "project/reveal", "workspace/refresh",
-			SUBSCRIBE, DIRTY, RELOAD, PERSPECTIVE);
+			SUBSCRIBE, DIRTY, RELOAD, PERSPECTIVE, PROVE);
 
 	private final String token;
 
@@ -108,6 +111,10 @@ public final class Methods {
 					Json.asList(params.get("files")));
 		case PERSPECTIVE:
 			return ProjectOps.showPerspective(required(params, "id"));
+		case PROVE:
+			return ProjectOps.prove(required(params, "project"),
+					required(params, "component"),
+					required(params, "obligation"));
 		default:
 			throw new BridgeException(BridgeException.METHOD_NOT_FOUND,
 					"unknown method: " + method);

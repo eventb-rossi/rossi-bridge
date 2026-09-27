@@ -22,7 +22,8 @@ The plug-in listens on `127.0.0.1` on an ephemeral port and publishes it as
 {"port":41235,"pid":12345,"protocol":1,"rodin":"3.10.0",
  "bundle":"1.0.0.qualifier","workspace":"/home/u/.rossi/rodin",
  "caps":["project/register","project/reveal","workspace/refresh",
-         "model/subscribe","model/dirty","model/reload","ui/perspective"],
+         "model/subscribe","model/dirty","model/reload","ui/perspective",
+         "proof/reveal"],
  "token":"9f86d081884c7d65…"}
 ```
 
@@ -44,6 +45,7 @@ sides can be upgraded independently.
 | `model/dirty` | `project`, `file`, `xml` | sent by the plug-in: a component changed in Rodin and is not saved, carrying the in-memory model |
 | `model/reload` | `project`, `files?` | `refreshLocal` the named files, then reload any editor open on them |
 | `ui/perspective` | `id` | switch the workbench to the perspective with that id |
+| `proof/reveal` | `project`, `component`, `obligation` | open a named, undischarged proof obligation in the interactive prover, first creating the empty stored proof Rodin's builder would if it is missing |
 
 `model/reload` skips an editor whose component has unsaved changes. Keystrokes
 reach the Rodin database before a save, so they sit in the buffer a reload would

@@ -44,7 +44,15 @@ import org.eclipse.ui.WorkbenchException;
 import org.eclipse.ui.ide.IDE;
 import org.eclipse.ui.ide.ResourceUtil;
 import org.eclipse.ui.part.ISetSelectionTarget;
+import org.eventb.core.IEventBRoot;
+import org.eventb.core.IPRProof;
+import org.eventb.core.IPSRoot;
+import org.eventb.core.IPSStatus;
+import org.eventb.core.seqprover.IConfidence;
+import org.eventb.internal.ui.UIUtils;
+import org.eventb.ui.EventBUIPlugin;
 import org.rodinp.core.IRodinFile;
+import org.rodinp.core.RodinCore;
 import org.rodinp.core.RodinDBException;
 import org.rodinp.core.emf.api.itf.ILFile;
 
@@ -156,6 +164,73 @@ final class ProjectOps {
 		workbench.getDisplay()
 				.asyncExec(() -> revealInWorkbench(workbench, target));
 		return Json.map("project", projectName, "component", component);
+	}
+
+	/** Select a named, undischarged proof obligation in the Proving UI. */
+	static Map<String, Object> prove(String projectName, String component,
+			String obligation) throws BridgeException {
+		final IProject project = project(projectName);
+		final IFile file = componentFile(project, component);
+		final IEventBRoot root = (IEventBRoot) RodinCore.valueOf(file)
+				.getRoot();
+		final IPSRoot psRoot = root.getPSRoot();
+		final IPSStatus status = psRoot.getStatus(obligation);
+		try {
+			if (!status.exists()) {
+				throw new BridgeException(BridgeException.INVALID_PARAMS,
+						"no proof obligation " + obligation + " in " + component);
+			}
+			if (!status.isBroken()
+					&& status.getConfidence() > IConfidence.REVIEWED_MAX) {
+				throw new BridgeException(BridgeException.INVALID_PARAMS,
+						"proof obligation " + obligation + " is discharged");
+			}
+		} catch (RodinDBException e) {
+			throw new BridgeException(BridgeException.INTERNAL_ERROR,
+					"cannot read proof obligation " + obligation + ": "
+							+ e.getMessage(), e);
+		}
+		ensureProof(project, status);
+		final IWorkbench workbench = PlatformUI.getWorkbench();
+		workbench.getDisplay().asyncExec(() -> {
+			UIUtils.linkToProverUI(status);
+			showPerspectiveInWorkbench(workbench,
+					EventBUIPlugin.PROVING_PERSPECTIVE_ID);
+		});
+		return Json.map("project", projectName, "component", component,
+				"obligation", obligation);
+	}
+
+	/**
+	 * Give the obligation the empty stored proof Rodin's proof-status updater
+	 * creates beside every new status. A status written outside Rodin (Rossi
+	 * builds its own) can lack it, and the prover then logs an error reading
+	 * the missing proof. Only a missing proof takes the project's rule, which
+	 * creating the proof file needs and which waits for a builder updating
+	 * the component: a reveal must not queue behind a long build for nothing.
+	 */
+	private static void ensureProof(IProject project, IPSStatus status) {
+		if (status.getProof().exists()) {
+			return;
+		}
+		final IWorkspaceRunnable create = monitor -> {
+			final IPRProof proof = status.getProof();
+			if (proof.exists()) {
+				return;
+			}
+			final IRodinFile file = proof.getRodinFile();
+			if (!file.exists()) {
+				file.create(false, monitor);
+			}
+			proof.create(null, monitor);
+			file.save(monitor, false);
+		};
+		try {
+			RodinCore.run(create, project, null);
+		} catch (RodinDBException e) {
+			Activator.log(IStatus.WARNING, "cannot create the proof of "
+					+ status.getElementName(), e);
+		}
 	}
 
 	/**
