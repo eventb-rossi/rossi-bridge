@@ -305,6 +305,22 @@ final class ProjectOps {
 	}
 
 	/**
+	 * Schedule a build of a project.
+	 *
+	 * <p>
+	 * A project registered before Rodin started, or whose files changed while
+	 * it was not running, gives the auto-builder no change to notice once
+	 * Rodin is up, so nothing builds it until a file next changes.
+	 * </p>
+	 */
+	static Map<String, Object> build(String projectName)
+			throws BridgeException {
+		scheduleBuild(project(projectName));
+		return Json.map("project", projectName, "buildScheduled",
+				Boolean.TRUE);
+	}
+
+	/**
 	 * Re-read `files` from disk and reload any editor open on them.
 	 *
 	 * <p>

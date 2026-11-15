@@ -57,10 +57,13 @@ public final class Methods {
 	/** Open one proof obligation in Rodin's interactive prover. */
 	public static final String PROVE = "proof/reveal";
 
+	/** Schedule a build of a project. */
+	public static final String BUILD = "workspace/build";
+
 	/** The methods this build answers, in the order they were introduced. */
 	private static final List<Object> CAPS = Arrays.<Object> asList(
 			"project/register", "project/reveal", "workspace/refresh",
-			SUBSCRIBE, DIRTY, RELOAD, PERSPECTIVE, PROVE);
+			SUBSCRIBE, DIRTY, RELOAD, PERSPECTIVE, PROVE, BUILD);
 
 	private final String token;
 
@@ -115,6 +118,8 @@ public final class Methods {
 			return ProjectOps.prove(required(params, "project"),
 					required(params, "component"),
 					required(params, "obligation"));
+		case BUILD:
+			return ProjectOps.build(required(params, "project"));
 		default:
 			throw new BridgeException(BridgeException.METHOD_NOT_FOUND,
 					"unknown method: " + method);
