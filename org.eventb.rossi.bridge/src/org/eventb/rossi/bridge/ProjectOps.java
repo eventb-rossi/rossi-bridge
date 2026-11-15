@@ -495,7 +495,9 @@ final class ProjectOps {
 				return Status.OK_STATUS;
 			}
 		};
-		job.setRule(project);
+		// IProject.build begins the workspace's build rule, which the project
+		// alone does not contain.
+		job.setRule(project.getWorkspace().getRuleFactory().buildRule());
 		job.schedule();
 	}
 
